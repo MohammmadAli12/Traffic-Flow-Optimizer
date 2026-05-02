@@ -1,22 +1,33 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Smart Traffic Management System API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: intersections
+    description: Traffic intersections
+  - name: roads
+    description: Roads and car counts
+  - name: signals
+    description: Traffic signal management
+  - name: hospitals
+    description: Hospital locations
+  - name: ambulances
+    description: Ambulance emergency routing
+  - name: stats
+    description: System-wide statistics
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +35,397 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /intersections:
+    get:
+      operationId: listIntersections
+      tags: [intersections]
+      summary: List all intersections
+      responses:
+        "200":
+          description: List of intersections
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Intersection"
+    post:
+      operationId: createIntersection
+      tags: [intersections]
+      summary: Create a new intersection
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateIntersectionBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Intersection"
+
+  /intersections/{id}:
+    get:
+      operationId: getIntersection
+      tags: [intersections]
+      summary: Get intersection with roads and signals
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Intersection detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntersectionDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteIntersection
+      tags: [intersections]
+      summary: Delete an intersection
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /roads:
+    get:
+      operationId: listRoads
+      tags: [roads]
+      summary: List all roads
+      parameters:
+        - name: intersectionId
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of roads
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Road"
+    post:
+      operationId: createRoad
+      tags: [roads]
+      summary: Create a road for an intersection
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRoadBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Road"
+
+  /roads/{id}:
+    get:
+      operationId: getRoad
+      tags: [roads]
+      summary: Get a road by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Road detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Road"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteRoad
+      tags: [roads]
+      summary: Delete a road
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /roads/{id}/cars:
+    patch:
+      operationId: updateCarCount
+      tags: [roads]
+      summary: Set the car count on a road
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCarCountBody"
+      responses:
+        "200":
+          description: Updated road
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Road"
+
+  /roads/{id}/add-car:
+    post:
+      operationId: addCar
+      tags: [roads]
+      summary: Add one car to a road
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Updated road
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Road"
+
+  /roads/{id}/remove-car:
+    post:
+      operationId: removeCar
+      tags: [roads]
+      summary: Remove one car from a road
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Updated road
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Road"
+
+  /signals:
+    get:
+      operationId: listSignals
+      tags: [signals]
+      summary: Get all signal states
+      responses:
+        "200":
+          description: All signal states
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Signal"
+
+  /signals/compute:
+    post:
+      operationId: computeSignals
+      tags: [signals]
+      summary: Recompute signal timings based on current car counts for all intersections
+      responses:
+        "200":
+          description: Updated signals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Signal"
+
+  /signals/{intersectionId}:
+    get:
+      operationId: getSignalsForIntersection
+      tags: [signals]
+      summary: Get signal states for a specific intersection
+      parameters:
+        - name: intersectionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Signal states for the intersection
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Signal"
+
+  /hospitals:
+    get:
+      operationId: listHospitals
+      tags: [hospitals]
+      summary: List all hospitals
+      responses:
+        "200":
+          description: List of hospitals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Hospital"
+    post:
+      operationId: createHospital
+      tags: [hospitals]
+      summary: Add a hospital
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateHospitalBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Hospital"
+
+  /hospitals/{id}:
+    delete:
+      operationId: deleteHospital
+      tags: [hospitals]
+      summary: Delete a hospital
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /ambulances:
+    get:
+      operationId: listAmbulances
+      tags: [ambulances]
+      summary: List all ambulances
+      responses:
+        "200":
+          description: List of ambulances
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Ambulance"
+    post:
+      operationId: dispatchAmbulance
+      tags: [ambulances]
+      summary: Dispatch an ambulance from a road
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DispatchAmbulanceBody"
+      responses:
+        "201":
+          description: Dispatched ambulance with route
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AmbulanceRoute"
+
+  /ambulances/{id}:
+    get:
+      operationId: getAmbulance
+      tags: [ambulances]
+      summary: Get ambulance details and route
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Ambulance with route
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AmbulanceRoute"
+
+  /ambulances/{id}/resolve:
+    post:
+      operationId: resolveAmbulance
+      tags: [ambulances]
+      summary: Mark ambulance as arrived / resolved
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Resolved ambulance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ambulance"
+
+  /stats:
+    get:
+      operationId: getStats
+      tags: [stats]
+      summary: Get system-wide traffic statistics
+      responses:
+        "200":
+          description: System stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemStats"
+
 components:
   schemas:
     HealthStatus:
@@ -31,6 +433,240 @@ components:
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+
+    Intersection:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        location:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, name, location, createdAt]
+
+    IntersectionDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        location:
+          type: string
+        roads:
+          type: array
+          items:
+            $ref: "#/components/schemas/Road"
+        signals:
+          type: array
+          items:
+            $ref: "#/components/schemas/Signal"
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, name, location, roads, signals, createdAt]
+
+    CreateIntersectionBody:
+      type: object
+      properties:
+        name:
+          type: string
+        location:
+          type: string
+      required: [name, location]
+
+    Road:
+      type: object
+      properties:
+        id:
+          type: integer
+        intersectionId:
+          type: integer
+        name:
+          type: string
+        direction:
+          type: string
+          enum: [North, South, East, West]
+        carCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, intersectionId, name, direction, carCount, createdAt]
+
+    CreateRoadBody:
+      type: object
+      properties:
+        intersectionId:
+          type: integer
+        name:
+          type: string
+        direction:
+          type: string
+          enum: [North, South, East, West]
+      required: [intersectionId, name, direction]
+
+    UpdateCarCountBody:
+      type: object
+      properties:
+        carCount:
+          type: integer
+          minimum: 0
+      required: [carCount]
+
+    Signal:
+      type: object
+      properties:
+        id:
+          type: integer
+        roadId:
+          type: integer
+        intersectionId:
+          type: integer
+        roadName:
+          type: string
+        direction:
+          type: string
+        state:
+          type: string
+          enum: [green, red, yellow]
+        greenDuration:
+          type: integer
+          description: Green phase duration in seconds
+        redDuration:
+          type: integer
+          description: Red phase duration in seconds
+        carCount:
+          type: integer
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, roadId, intersectionId, roadName, direction, state, greenDuration, redDuration, carCount, updatedAt]
+
+    Hospital:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        location:
+          type: string
+        nearestIntersectionId:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, name, location, nearestIntersectionId, createdAt]
+
+    CreateHospitalBody:
+      type: object
+      properties:
+        name:
+          type: string
+        location:
+          type: string
+        nearestIntersectionId:
+          type: integer
+      required: [name, location, nearestIntersectionId]
+
+    Ambulance:
+      type: object
+      properties:
+        id:
+          type: integer
+        sourceRoadId:
+          type: integer
+        sourceRoadName:
+          type: string
+        targetHospitalId:
+          type: integer
+        targetHospitalName:
+          type: string
+        status:
+          type: string
+          enum: [active, resolved]
+        dispatchedAt:
+          type: string
+          format: date-time
+      required: [id, sourceRoadId, sourceRoadName, targetHospitalId, targetHospitalName, status, dispatchedAt]
+
+    DispatchAmbulanceBody:
+      type: object
+      properties:
+        sourceRoadId:
+          type: integer
+      required: [sourceRoadId]
+
+    RouteSegment:
+      type: object
+      properties:
+        roadId:
+          type: integer
+        roadName:
+          type: string
+        direction:
+          type: string
+        carCount:
+          type: integer
+        intersectionName:
+          type: string
+      required: [roadId, roadName, direction, carCount, intersectionName]
+
+    AmbulanceRoute:
+      type: object
+      properties:
+        ambulance:
+          $ref: "#/components/schemas/Ambulance"
+        nearestHospital:
+          $ref: "#/components/schemas/Hospital"
+        route:
+          type: array
+          items:
+            $ref: "#/components/schemas/RouteSegment"
+        totalCars:
+          type: integer
+          description: Total cars along the chosen route
+      required: [ambulance, nearestHospital, route, totalCars]
+
+    SystemStats:
+      type: object
+      properties:
+        totalIntersections:
+          type: integer
+        totalRoads:
+          type: integer
+        totalCars:
+          type: integer
+        activeAmbulances:
+          type: integer
+        totalHospitals:
+          type: integer
+        busiestRoad:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            carCount:
+              type: integer
+            direction:
+              type: string
+          required: [id, name, carCount, direction]
+        avgCarsPerRoad:
+          type: number
+      required: [totalIntersections, totalRoads, totalCars, activeAmbulances, totalHospitals, avgCarsPerRoad]
