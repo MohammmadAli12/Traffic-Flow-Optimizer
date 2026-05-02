@@ -9,6 +9,7 @@ import { Intersections } from "./pages/intersections";
 import { IntersectionDetail } from "./pages/intersection-detail";
 import { Ambulances } from "./pages/ambulances";
 import { Hospitals } from "./pages/hospitals";
+import { LucknowMap } from "./pages/map";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -27,6 +28,7 @@ function Router() {
         <Route path="/intersections/:id" component={IntersectionDetail} />
         <Route path="/ambulances" component={Ambulances} />
         <Route path="/hospitals" component={Hospitals} />
+        <Route path="/map" component={LucknowMap} />
         <Route component={NotFound} />
       </Switch>
     </AppLayout>
