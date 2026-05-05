@@ -27,8 +27,15 @@ import {
 
 export function Hospitals() {
   const queryClient = useQueryClient();
-  const { data: hospitals, isLoading: loadingHospitals } = useListHospitals();
-  const { data: intersections } = useListIntersections();
+  const { data: hospitalsData, isLoading: loadingHospitals } = useListHospitals();
+  const hospitals = Array.isArray(hospitalsData)
+    ? hospitalsData
+    : hospitalsData?.data || [];
+
+  const { data: intersectionsData } = useListIntersections();
+  const intersections = Array.isArray(intersectionsData)
+    ? intersectionsData
+    : intersectionsData?.data || [];
   const createHospital = useCreateHospital();
   const deleteHospital = useDeleteHospital();
 
@@ -163,7 +170,7 @@ export function Hospitals() {
                 </p>
               </motion.div>
             ) : (
-              hospitals?.map((hospital) => {
+              Array.isArray(hospitals) && hospitals.map((hospital) => {
                 const nearestIntersection = intersections?.find((i) => i.id === hospital.nearestIntersectionId);
                 return (
                   <motion.div

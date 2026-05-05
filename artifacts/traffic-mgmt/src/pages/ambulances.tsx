@@ -64,8 +64,13 @@ function AmbulanceRoutePanel({ ambulanceId, onClose }: { ambulanceId: number; on
 
 export function Ambulances() {
   const queryClient = useQueryClient();
-  const { data: ambulances, isLoading: loadingAmbulances } = useListAmbulances();
-  const { data: roads } = useListRoads();
+  const { data: ambulancesData, isLoading: loadingAmbulances } = useListAmbulances();
+
+  const ambulances = Array.isArray(ambulancesData)
+    ? ambulancesData
+    : ambulancesData?.data || [];
+  const { data: roadsData } = useListRoads();
+  const roads = Array.isArray(roadsData) ? roadsData : roadsData?.data || [];
   const dispatchAmbulance = useDispatchAmbulance();
   const resolveAmbulance = useResolveAmbulance();
   const computeSignals = useComputeSignals();
@@ -146,12 +151,12 @@ export function Ambulances() {
                   <SelectValue placeholder="Select emergency origin" />
                 </SelectTrigger>
                 <SelectContent>
-                  {roads?.map((road) => (
+                  {Array.isArray(roads) && roads.map((road) => (
                     <SelectItem key={road.id} value={road.id.toString()}>
                       {road.name} — {road.carCount} cars
                     </SelectItem>
                   ))}
-                  {roads?.length === 0 && (
+                  {Array.isArray(roads) && roads.length === 0 && (
                     <div className="px-2 py-4 text-sm text-muted-foreground">No roads available.</div>
                   )}
                 </SelectContent>
@@ -194,7 +199,7 @@ export function Ambulances() {
                     <p className="text-sm uppercase tracking-widest font-bold">No Active Emergencies</p>
                   </motion.div>
                 ) : (
-                  ambulances?.map((amb) => (
+                 Array.isArray(ambulances) && ambulances.map((amb) =>(
                     <motion.div
                       key={amb.id}
                       layout
@@ -227,7 +232,9 @@ export function Ambulances() {
                                 AMB-{amb.id.toString().padStart(4, "0")}
                               </span>
                               <span className="font-mono text-[10px] text-muted-foreground">
-                                {new Date(amb.dispatchedAt).toLocaleTimeString()}
+                                {amb.dispatchedAt
+                                    ? new Date(amb.dispatchedAt).toLocaleTimeString()
+                                    : "N/A"}
                               </span>
                             </div>
 
@@ -239,7 +246,7 @@ export function Ambulances() {
                               <span className="text-zinc-600">→</span>
                               <div className="flex items-center gap-1.5 text-emerald-400 font-bold">
                                 <Activity className="h-3.5 w-3.5" />
-                                <span>{amb.targetHospitalName}</span>
+                                <span>{amb.targetHospitalName || "Not assigned"}</span>
                               </div>
                             </div>
                           </div>

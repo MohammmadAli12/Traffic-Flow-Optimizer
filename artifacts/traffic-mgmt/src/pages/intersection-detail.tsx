@@ -26,8 +26,8 @@ export function IntersectionDetail() {
   const intersectionId = parseInt(id || "0", 10);
   const queryClient = useQueryClient();
 
-  const { data: intersection, isLoading } = useGetIntersection(intersectionId, {
-    query: { enabled: !!intersectionId, queryKey: getGetIntersectionQueryKey(intersectionId) },
+  const { data: intersection, isLoading, error } = useGetIntersection(intersectionId, {
+    query: { enabled: intersectionId > 0, queryKey: getGetIntersectionQueryKey(intersectionId) },
   });
 
   const createRoad = useCreateRoad();
@@ -90,7 +90,7 @@ export function IntersectionDetail() {
   }
 
   if (!intersection) {
-    return <div className="text-muted-foreground p-8">Intersection not found.</div>;
+    return <div className="text-muted-foreground p-8">Intersection not found. (ID: {intersectionId})</div>;
   }
 
   return (

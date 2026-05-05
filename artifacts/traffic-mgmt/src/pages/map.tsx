@@ -10,6 +10,7 @@ import {
   getListAmbulancesQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -109,10 +110,35 @@ interface AmbSim {
 // ── Component ─────────────────────────────────────────────────────────────────
 export function LucknowMap() {
   const qc = useQueryClient();
-  const { data: intersections } = useListIntersections();
-  const { data: hospitals } = useListHospitals();
-  const { data: signals } = useListSignals();
-  const { data: roads } = useListRoads();
+  const [, setLocation] = useLocation();
+  // ✅ SAFE DATA HANDLING
+  const { data: intersectionsData, isLoading: loadingIntersections } = useListIntersections();
+  const intersections = Array.isArray(intersectionsData)
+    ? intersectionsData
+    : intersectionsData?.data || [];
+
+  const { data: hospitalsData, isLoading: loadingHospitals } = useListHospitals();
+  const hospitals = Array.isArray(hospitalsData)
+    ? hospitalsData
+    : hospitalsData?.data || [];
+
+  const { data: signalsData, isLoading: loadingSignals } = useListSignals();
+  const signals = Array.isArray(signalsData)
+    ? signalsData
+    : signalsData?.data || [];
+
+  const { data: roadsData, isLoading: loadingRoads } = useListRoads();
+  const roads = Array.isArray(roadsData)
+    ? roadsData
+    : roadsData?.data || [];
+
+  // Debug logging
+  useEffect(() => {
+    console.log('Intersections:', intersections);
+    console.log('Hospitals:', hospitals);
+    console.log('Signals:', signals);
+    console.log('Roads:', roads);
+  }, [intersections, hospitals, signals, roads]);
 
   const dispatch = useDispatchAmbulance();
   const compute = useComputeSignals();
@@ -160,10 +186,19 @@ export function LucknowMap() {
     const roadId = parseInt(selectedRoad, 10);
     const road = roads?.find(r => r.id === roadId);
 
-    dispatch.mutate({ data: { sourceRoadId: roadId } }, {
-      onSuccess: result => {
-        qc.invalidateQueries({ queryKey: getListAmbulancesQueryKey() });
-        compute.mutate({}, { onSuccess: () => qc.invalidateQueries({ queryKey: getListSignalsQueryKey() }) });
+    dispatch.mutate(
+      { data: { sourceRoadId: roadId } },
+      {
+        onSuccess: (result) => {
+          qc.invalidateQueries({ queryKey: getListAmbulancesQueryKey() });
+          compute.mutate(
+            {},
+            {
+              onSuccess: () => {
+                qc.invalidateQueries({ queryKey: getListSignalsQueryKey() });
+              },
+            }
+          );
 
         // Build coordinate path
         const coords: [number, number][] = [];
@@ -212,6 +247,17 @@ export function LucknowMap() {
 
   return (
     <div className="space-y-4">
+      {/* Debug Info */}
+      {(loadingIntersections || loadingHospitals || loadingSignals || loadingRoads) && (
+        <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded">
+          Loading data... (Intersections: {loadingIntersections}, Hospitals: {loadingHospitals}, Signals: {loadingSignals}, Roads: {loadingRoads})
+        </div>
+      )}
+      {intersections.length === 0 && !loadingIntersections && (
+        <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded">
+          ⚠️ No intersections loaded. Check browser console for errors.
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -223,7 +269,16 @@ export function LucknowMap() {
           </p>
         </div>
         <Button variant="secondary" size="sm" disabled={compute.isPending}
-          onClick={() => compute.mutate({}, { onSuccess: () => qc.invalidateQueries({ queryKey: getListSignalsQueryKey() }) })}
+          onClick={() => {
+          compute.mutate(
+            {},
+            {
+              onSuccess: () => {
+                qc.invalidateQueries({ queryKey: getListSignalsQueryKey() });
+              },
+            }
+          );
+        }}
           className="uppercase text-xs font-bold tracking-wider"
         >
           <RefreshCw className={`h-4 w-4 mr-2 ${compute.isPending ? "animate-spin" : ""}`} />
@@ -257,7 +312,7 @@ export function LucknowMap() {
             />
 
             {/* Intersection markers */}
-            {intersections?.map(ix => {
+            {Array.isArray(intersections) && intersections.map(ix => {
               const lat = (ix as unknown as { lat?: number }).lat;
               const lng = (ix as unknown as { lng?: number }).lng;
               if (lat == null || lng == null) return null;
@@ -281,6 +336,14 @@ export function LucknowMap() {
                           {s.direction}: {s.carCount} cars — G:{s.greenDuration}s R:{s.redDuration}s
                         </div>
                       ))}
+                      <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid #e4e4e7" }}>
+                        <button 
+                          onClick={() => setLocation(`/intersections/${ix.id}`)}
+                          style={{ color: "#3b82f6", textDecoration: "none", fontSize: 11, fontWeight: 700, background: "none", border: "none", cursor: "pointer" }}
+                        >
+                          → Access Control
+                        </button>
+                      </div>
                     </div>
                   </Popup>
                 </Marker>
@@ -288,7 +351,7 @@ export function LucknowMap() {
             })}
 
             {/* Hospital markers */}
-            {hospitals?.map(h => {
+            {Array.isArray(hospitals) && hospitals.map(h => {
               const lat = (h as unknown as { lat?: number }).lat;
               const lng = (h as unknown as { lng?: number }).lng;
               if (lat == null || lng == null) return null;
@@ -361,7 +424,7 @@ export function LucknowMap() {
                   <SelectValue placeholder="Select origin road" />
                 </SelectTrigger>
                 <SelectContent>
-                  {roads?.map(r => (
+                  {Array.isArray(roads) && roads.map(r => (
                     <SelectItem key={r.id} value={String(r.id)}>
                       {r.name} ({r.carCount} cars)
                     </SelectItem>
@@ -421,7 +484,7 @@ export function LucknowMap() {
               <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">Signal Status</span>
             </div>
             <div className="p-3 space-y-1.5 max-h-52 overflow-y-auto">
-              {intersections?.map(ix => {
+              {Array.isArray(intersections) && intersections.map(ix => {
                 const state = intersectionSignal(ix.id);
                 const color = signalColor(state);
                 const total = (signals?.filter(s => s.intersectionId === ix.id) ?? []).reduce((n, s) => n + s.carCount, 0);

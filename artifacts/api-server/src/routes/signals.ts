@@ -49,42 +49,57 @@ function computeTimings(roads: { id: number; carCount: number }[]): {
   });
 }
 
-async function buildSignalResponse(signals: typeof signalsTable.$inferSelect[]) {
+async function buildSignalResponse(signals: any[]) {
   const result = [];
   for (const s of signals) {
-    const [road] = await db.select().from(roadsTable).where(eq(roadsTable.id, s.roadId));
-    result.push({
-      ...s,
-      roadName: road?.name ?? "",
-      direction: road?.direction ?? "",
-      carCount: road?.carCount ?? 0,
-    });
+    try {
+      const roads = await db.select().from(roadsTable).where(eq(roadsTable.id, s.roadId));
+      const road = roads[0];
+      result.push({
+        id: s.id,
+        roadId: s.roadId,
+        intersectionId: s.intersectionId,
+        state: s.state,
+        greenDuration: s.greenDuration,
+        redDuration: s.redDuration,
+        updatedAt: s.updatedAt,
+        roadName: road?.name ?? "",
+        direction: road?.direction ?? "",
+        carCount: road?.carCount ?? 0,
+      });
+    } catch (err) {
+      console.error("Error building signal response for signal", s.id, err);
+    }
   }
   return result;
 }
 
 router.get("/signals", async (req, res) => {
   try {
+    console.log("Fetching all signals...");
     const signals = await db.select().from(signalsTable);
+    console.log("Found signals:", signals.length);
     const result = await buildSignalResponse(signals);
+    console.log("Built response with", result.length, "signals");
     res.json(result);
   } catch (err) {
+    console.error("Failed to list signals:", err);
     req.log.error({ err }, "Failed to list signals");
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: "Internal server error", details: String(err) });
   }
 });
 
 router.post("/signals/compute", async (req, res) => {
   try {
     const intersections = await db.select().from(intersectionsTable);
-    const updatedSignals: typeof signalsTable.$inferSelect[] = [];
+    const updatedSignals: any[] = [];
 
     for (const intersection of intersections) {
       const roads = await db.select().from(roadsTable).where(eq(roadsTable.intersectionId, intersection.id));
       const timings = computeTimings(roads);
 
       for (const timing of timings) {
-        const [updated] = await db
+        const updated = await db
           .update(signalsTable)
           .set({
             greenDuration: timing.greenDuration,
@@ -94,13 +109,14 @@ router.post("/signals/compute", async (req, res) => {
           })
           .where(eq(signalsTable.roadId, timing.roadId))
           .returning();
-        if (updated) updatedSignals.push(updated);
+        if (updated && updated.length > 0) updatedSignals.push(updated[0]);
       }
     }
 
     const result = await buildSignalResponse(updatedSignals);
     res.json(result);
   } catch (err) {
+    console.error("Failed to compute signals:", err);
     req.log.error({ err }, "Failed to compute signals");
     res.status(500).json({ error: "Internal server error" });
   }
@@ -118,6 +134,7 @@ router.get("/signals/:intersectionId", async (req, res) => {
     const result = await buildSignalResponse(signals);
     res.json(result);
   } catch (err) {
+    console.error("Failed to get signals for intersection:", err);
     req.log.error({ err }, "Failed to get signals for intersection");
     res.status(500).json({ error: "Internal server error" });
   }

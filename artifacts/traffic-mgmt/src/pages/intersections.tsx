@@ -1,12 +1,10 @@
 import { useState } from "react";
 import { Link } from "wouter";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   useListIntersections,
   getListIntersectionsQueryKey,
-  useCreateIntersection,
-  useDeleteIntersection,
 } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,38 +30,17 @@ import {
 
 export function Intersections() {
   const queryClient = useQueryClient();
-  const { data: intersections, isLoading } = useListIntersections();
-  const createIntersection = useCreateIntersection();
-  const deleteIntersection = useDeleteIntersection();
+  const { data: intersectionsData, isLoading } = useListIntersections();
+  const intersections = Array.isArray(intersectionsData)
+    ? intersectionsData
+    : intersectionsData?.data || [];
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [newLocation, setNewLocation] = useState("");
 
   const handleCreate = () => {
-    if (!newName || !newLocation) return;
-    createIntersection.mutate(
-      { data: { name: newName, location: newLocation } },
-      {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getListIntersectionsQueryKey() });
-          setIsCreateOpen(false);
-          setNewName("");
-          setNewLocation("");
-        },
-      }
-    );
-  };
-
-  const handleDelete = (id: number) => {
-    deleteIntersection.mutate(
-      { id },
-      {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getListIntersectionsQueryKey() });
-        },
-      }
-    );
+    alert("Create disabled for now");
   };
 
   return (
@@ -111,8 +88,8 @@ export function Intersections() {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsCreateOpen(false)} className="uppercase text-xs font-bold">Cancel</Button>
-              <Button onClick={handleCreate} disabled={!newName || !newLocation || createIntersection.isPending} className="uppercase text-xs font-bold">
-                {createIntersection.isPending ? "Creating..." : "Create Node"}
+              <Button onClick={handleCreate} disabled={!newName || !newLocation}>
+                Create Node
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -141,7 +118,7 @@ export function Intersections() {
                 </p>
               </motion.div>
             ) : (
-              intersections?.map((intersection) => (
+              Array.isArray(intersections) && intersections.map((intersection) => (
                 <motion.div
                   key={intersection.id}
                   layout
@@ -167,8 +144,7 @@ export function Intersections() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all"
-                          onClick={() => handleDelete(intersection.id)}
-                          disabled={deleteIntersection.isPending}
+                          disabled={false}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

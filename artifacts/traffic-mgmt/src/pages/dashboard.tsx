@@ -5,10 +5,23 @@ import { Activity, Car, MapPin, Navigation, Signal } from "lucide-react";
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "wouter";
+import { useEffect } from "react";
 
 export function Dashboard() {
   const { data: stats, isLoading: statsLoading } = useGetStats();
-  const { data: signals, isLoading: signalsLoading } = useListSignals();
+  const { data: signalsData, isLoading: signalsLoading } = useListSignals();
+
+  // Safe data extraction
+  const signals = Array.isArray(signalsData)
+    ? signalsData
+    : signalsData?.data || [];
+
+  // Debug logging
+  useEffect(() => {
+    console.log('Dashboard - signalsData:', signalsData);
+    console.log('Dashboard - signals array:', signals);
+    console.log('Dashboard - stats:', stats);
+  }, [signalsData, signals, stats]);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -114,40 +127,40 @@ export function Dashboard() {
           <Signal className="h-5 w-5" /> Live Signal Grid
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {signals?.map((signal) => (
-            <Card key={signal.id} className="bg-card border-card-border">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="font-bold text-sm">
-                    <Link href={`/intersections/${signal.intersectionId}`} className="hover:text-primary transition-colors">
-                      {signal.intersectionName}
-                    </Link>
-                  </div>
-                  <Badge variant="outline" className="font-mono bg-background">
-                    {signal.direction}
-                  </Badge>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="text-xs text-muted-foreground">
-                    <span className="block mb-1">{signal.roadName}</span>
-                    <span className="font-mono text-foreground">{signal.carCount} cars</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex flex-col items-center gap-1 bg-background p-1.5 rounded border border-border">
-                      <div className={`w-3 h-3 rounded-full ${signal.state === 'red' ? 'bg-destructive shadow-[0_0_8px_rgba(220,38,38,0.8)]' : 'bg-destructive/20'}`} />
-                      <div className={`w-3 h-3 rounded-full ${signal.state === 'yellow' ? 'bg-chart-3 shadow-[0_0_8px_rgba(234,179,8,0.8)]' : 'bg-chart-3/20'}`} />
-                      <div className={`w-3 h-3 rounded-full ${signal.state === 'green' ? 'bg-chart-1 shadow-[0_0_8px_rgba(34,197,94,0.8)]' : 'bg-chart-1/20'}`} />
+          {signals.length > 0 ? (
+            signals.map((signal) => (
+              <Link key={signal.id} href={`/intersections/${signal.intersectionId}`}>
+                <Card className="bg-card border-card-border hover:border-primary/50 transition-colors cursor-pointer h-full">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="font-bold text-sm truncate flex-1">
+                        {signal.roadName}
+                      </div>
+                      <Badge variant="outline" className="font-mono bg-background ml-2 shrink-0">
+                        {signal.direction}
+                      </Badge>
                     </div>
-                    <div className="font-mono text-xs flex flex-col gap-0.5 text-right">
-                      <span className="text-chart-1">G: {signal.greenDuration}s</span>
-                      <span className="text-destructive">R: {signal.redDuration}s</span>
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs text-muted-foreground">
+                        <span className="font-mono text-foreground">{signal.carCount} cars</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex flex-col items-center gap-1 bg-background p-1.5 rounded border border-border">
+                          <div className={`w-3 h-3 rounded-full ${signal.state === 'red' ? 'bg-destructive shadow-[0_0_8px_rgba(220,38,38,0.8)]' : 'bg-destructive/20'}`} />
+                          <div className={`w-3 h-3 rounded-full ${signal.state === 'yellow' ? 'bg-chart-3 shadow-[0_0_8px_rgba(234,179,8,0.8)]' : 'bg-chart-3/20'}`} />
+                          <div className={`w-3 h-3 rounded-full ${signal.state === 'green' ? 'bg-chart-1 shadow-[0_0_8px_rgba(34,197,94,0.8)]' : 'bg-chart-1/20'}`} />
+                        </div>
+                        <div className="font-mono text-xs flex flex-col gap-0.5 text-right">
+                          <span className="text-chart-1">G: {signal.greenDuration}s</span>
+                          <span className="text-destructive">R: {signal.redDuration}s</span>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-          {signals?.length === 0 && (
+                  </CardContent>
+                </Card>
+              </Link>
+            ))
+          ) : (
             <div className="col-span-full p-8 text-center text-muted-foreground border border-dashed border-border rounded-lg bg-card/50">
               No active signals detected. Add intersections and roads to begin.
             </div>
