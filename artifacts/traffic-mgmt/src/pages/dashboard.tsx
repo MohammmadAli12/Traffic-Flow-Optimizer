@@ -4,6 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Activity, Car, MapPin, Navigation, Signal } from "lucide-react";
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Link } from "wouter";
 import { useEffect } from "react";
 
@@ -66,59 +67,87 @@ export function Dashboard() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <motion.div variants={itemVariants}>
-          <Card className="bg-card border-card-border">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-xs font-medium text-muted-foreground uppercase">Total Cars</CardTitle>
-              <Car className="h-4 w-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold font-mono">{stats?.totalCars || 0}</div>
-              <p className="text-xs text-muted-foreground mt-1">Across all roads</p>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div variants={itemVariants}>
-          <Card className="bg-card border-card-border">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-xs font-medium text-muted-foreground uppercase">Intersections</CardTitle>
-              <MapPin className="h-4 w-4 text-chart-4" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold font-mono">{stats?.totalIntersections || 0}</div>
-              <p className="text-xs text-muted-foreground mt-1">Active nodes</p>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div variants={itemVariants}>
-          <Card className="bg-card border-card-border">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-xs font-medium text-muted-foreground uppercase">Active Ambulances</CardTitle>
-              <Activity className="h-4 w-4 text-destructive" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold font-mono">{stats?.activeAmbulances || 0}</div>
-              <p className="text-xs text-muted-foreground mt-1">In transit</p>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div variants={itemVariants}>
-          <Card className="bg-card border-card-border">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-xs font-medium text-muted-foreground uppercase">Busiest Road</CardTitle>
-              <Navigation className="h-4 w-4 text-chart-3" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-lg font-bold truncate">
-                {stats?.busiestRoad ? stats.busiestRoad.name : "N/A"}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div>
+                <Card className="bg-card border-card-border cursor-help hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:scale-105">
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-xs font-medium text-muted-foreground uppercase">Total Cars</CardTitle>
+                    <Car className="h-4 w-4 text-primary" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold font-mono">{stats?.totalCars || 0}</div>
+                    <p className="text-xs text-muted-foreground mt-1">Across all roads</p>
+                  </CardContent>
+                </Card>
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {stats?.busiestRoad ? `${stats.busiestRoad.carCount} cars detected` : "No traffic data"}
-              </p>
-            </CardContent>
-          </Card>
+            </TooltipTrigger>
+            <TooltipContent>Total number of vehicles detected across the entire traffic network</TooltipContent>
+          </Tooltip>
+        </motion.div>
+
+        <motion.div variants={itemVariants}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div>
+                <Card className="bg-card border-card-border cursor-help hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:scale-105">
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-xs font-medium text-muted-foreground uppercase">Intersections</CardTitle>
+                    <MapPin className="h-4 w-4 text-chart-4" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold font-mono">{stats?.totalIntersections || 0}</div>
+                    <p className="text-xs text-muted-foreground mt-1">Active nodes</p>
+                  </CardContent>
+                </Card>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>Number of active traffic signal intersections in the system</TooltipContent>
+          </Tooltip>
+        </motion.div>
+
+        <motion.div variants={itemVariants}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div>
+                <Card className="bg-card border-card-border cursor-help hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:scale-105">
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-xs font-medium text-muted-foreground uppercase">Active Ambulances</CardTitle>
+                    <Activity className="h-4 w-4 text-destructive" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold font-mono">{stats?.activeAmbulances || 0}</div>
+                    <p className="text-xs text-muted-foreground mt-1">In transit</p>
+                  </CardContent>
+                </Card>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>Emergency vehicles currently in transit with priority routing</TooltipContent>
+          </Tooltip>
+        </motion.div>
+
+        <motion.div variants={itemVariants}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div>
+                <Card className="bg-card border-card-border cursor-help hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:scale-105">
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-xs font-medium text-muted-foreground uppercase">Busiest Road</CardTitle>
+                    <Navigation className="h-4 w-4 text-chart-3" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-lg font-bold truncate">
+                      {stats?.busiestRoad ? stats.busiestRoad.name : "N/A"}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {stats?.busiestRoad ? `${stats.busiestRoad.carCount} cars detected` : "No traffic data"}
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>Road segment with the highest vehicle concentration</TooltipContent>
+          </Tooltip>
         </motion.div>
       </div>
 
@@ -129,36 +158,51 @@ export function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {signals.length > 0 ? (
             signals.map((signal) => (
-              <Link key={signal.id} href={`/intersections/${signal.intersectionId}`}>
-                <Card className="bg-card border-card-border hover:border-primary/50 transition-colors cursor-pointer h-full">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="font-bold text-sm truncate flex-1">
-                        {signal.roadName}
-                      </div>
-                      <Badge variant="outline" className="font-mono bg-background ml-2 shrink-0">
-                        {signal.direction}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="text-xs text-muted-foreground">
-                        <span className="font-mono text-foreground">{signal.carCount} cars</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="flex flex-col items-center gap-1 bg-background p-1.5 rounded border border-border">
-                          <div className={`w-3 h-3 rounded-full ${signal.state === 'red' ? 'bg-destructive shadow-[0_0_8px_rgba(220,38,38,0.8)]' : 'bg-destructive/20'}`} />
-                          <div className={`w-3 h-3 rounded-full ${signal.state === 'yellow' ? 'bg-chart-3 shadow-[0_0_8px_rgba(234,179,8,0.8)]' : 'bg-chart-3/20'}`} />
-                          <div className={`w-3 h-3 rounded-full ${signal.state === 'green' ? 'bg-chart-1 shadow-[0_0_8px_rgba(34,197,94,0.8)]' : 'bg-chart-1/20'}`} />
+              <Tooltip key={signal.id}>
+                <TooltipTrigger asChild>
+                  <div>
+                    <Link href={`/intersections/${signal.intersectionId}`}>
+                  <Card className="bg-card border-card-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-pointer h-full">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="font-bold text-sm truncate flex-1">
+                          {signal.roadName}
                         </div>
-                        <div className="font-mono text-xs flex flex-col gap-0.5 text-right">
-                          <span className="text-chart-1">G: {signal.greenDuration}s</span>
-                          <span className="text-destructive">R: {signal.redDuration}s</span>
+                        <Badge variant="outline" className="font-mono bg-background ml-2 shrink-0">
+                          {signal.direction}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="text-xs text-muted-foreground">
+                          <span className="font-mono text-foreground">{signal.carCount} cars</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="flex flex-col items-center gap-1 bg-background p-1.5 rounded border border-border">
+                            <div className={`w-3 h-3 rounded-full ${signal.state === 'red' ? 'bg-destructive shadow-[0_0_8px_rgba(220,38,38,0.8)]' : 'bg-destructive/20'}`} />
+                            <div className={`w-3 h-3 rounded-full ${signal.state === 'yellow' ? 'bg-chart-3 shadow-[0_0_8px_rgba(234,179,8,0.8)]' : 'bg-chart-3/20'}`} />
+                            <div className={`w-3 h-3 rounded-full ${signal.state === 'green' ? 'bg-chart-1 shadow-[0_0_8px_rgba(34,197,94,0.8)]' : 'bg-chart-1/20'}`} />
+                          </div>
+                          <div className="font-mono text-xs flex flex-col gap-0.5 text-right">
+                            <span className="text-chart-1">G: {signal.greenDuration}s</span>
+                            <span className="text-destructive">R: {signal.redDuration}s</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
+                    </CardContent>
+                  </Card>
+                    </Link>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <div className="space-y-1">
+                    <p className="font-semibold">{signal.roadName}</p>
+                    <p>Direction: {signal.direction}</p>
+                    <p>Current State: {signal.state.toUpperCase()}</p>
+                    <p>Vehicles: {signal.carCount}</p>
+                    <p className="text-xs text-muted-foreground mt-2">Click to view details</p>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
             ))
           ) : (
             <div className="col-span-full p-8 text-center text-muted-foreground border border-dashed border-border rounded-lg bg-card/50">
