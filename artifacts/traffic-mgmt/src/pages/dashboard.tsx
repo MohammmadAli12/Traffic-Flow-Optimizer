@@ -1,16 +1,24 @@
 import { useGetStats, getGetStatsQueryKey, useListSignals, getListSignalsQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Activity, Car, MapPin, Navigation, Signal } from "lucide-react";
+import { Activity, Car, MapPin, Navigation, Signal, Clock } from "lucide-react";
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Link } from "wouter";
-import { useEffect } from "react";
+import { useEffect, useState, useRef } from "react";
 
 export function Dashboard() {
   const { data: stats, isLoading: statsLoading } = useGetStats();
   const { data: signalsData, isLoading: signalsLoading } = useListSignals();
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [sparkles, setSparkles] = useState<Array<{ id: number; x: number; y: number }>>([]);
+  const sparkleIdRef = useRef(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [signalStates, setSignalStates] = useState<{ [key: number]: string }>({});
+  const [countdowns, setCountdowns] = useState<{ [key: number]: number }>({});
+  const intervalsRef = useRef<{ [key: number]: NodeJS.Timeout }>({});
+  const countdownIntervalsRef = useRef<{ [key: number]: NodeJS.Timeout }>({});
 
   const signals = Array.isArray(signalsData)
     ? signalsData
@@ -21,6 +29,105 @@ export function Dashboard() {
     console.log('Dashboard - signals array:', signals);
     console.log('Dashboard - stats:', stats);
   }, [signalsData, signals, stats]);
+
+  // Calculate timer duration based on car count
+  const calculateTimerDuration = (carCount: number) => {
+    if (carCount === 0) return 2000; // 2 seconds if no cars
+    return 1000 + (carCount - 1) * 500; // 1 sec for first car + 0.5 sec per additional car
+  };
+
+  // Initialize signal states
+  useEffect(() => {
+    const newStates: { [key: number]: string } = {};
+    const newCountdowns: { [key: number]: number } = {};
+
+    signals.forEach((signal) => {
+      if (!signalStates[signal.id]) {
+        newStates[signal.id] = 'red';
+      }
+      const duration = calculateTimerDuration(signal.carCount);
+      newCountdowns[signal.id] = duration / 1000; // Convert to seconds for display
+    });
+
+    setSignalStates((prev) => ({ ...prev, ...newStates }));
+    setCountdowns((prev) => ({ ...prev, ...newCountdowns }));
+  }, [signals]);
+
+  // Timer effect for signal changes
+  useEffect(() => {
+    // Clear existing intervals
+    Object.values(intervalsRef.current).forEach((interval) => clearInterval(interval));
+    Object.values(countdownIntervalsRef.current).forEach((interval) => clearInterval(interval));
+    intervalsRef.current = {};
+    countdownIntervalsRef.current = {};
+
+    signals.forEach((signal) => {
+      const duration = calculateTimerDuration(signal.carCount);
+
+      // Countdown timer
+      let timeLeft = duration / 1000;
+      setCountdowns((prev) => ({ ...prev, [signal.id]: timeLeft }));
+
+      countdownIntervalsRef.current[signal.id] = setInterval(() => {
+        setCountdowns((prev) => {
+          const newTime = (prev[signal.id] || 0) - 0.1;
+          return { ...prev, [signal.id]: Math.max(0, newTime) };
+        });
+      }, 100);
+
+      // Signal change timer
+      intervalsRef.current[signal.id] = setInterval(() => {
+        setSignalStates((prev) => {
+          const currentState = prev[signal.id] || 'red';
+          let nextState = 'red';
+
+          if (currentState === 'red') {
+            nextState = 'yellow';
+          } else if (currentState === 'yellow') {
+            nextState = 'green';
+          } else if (currentState === 'green') {
+            nextState = 'red';
+          }
+
+          return { ...prev, [signal.id]: nextState };
+        });
+
+        // Reset countdown
+        const newDuration = calculateTimerDuration(signal.carCount);
+        setCountdowns((prev) => ({
+          ...prev,
+          [signal.id]: newDuration / 1000,
+        }));
+      }, duration);
+    });
+
+    return () => {
+      Object.values(intervalsRef.current).forEach((interval) => clearInterval(interval));
+      Object.values(countdownIntervalsRef.current).forEach((interval) => clearInterval(interval));
+    };
+  }, [signals]);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!containerRef.current) return;
+
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    setMousePosition({ x, y });
+
+    const newSparkle = {
+      id: sparkleIdRef.current++,
+      x: x + (Math.random() - 0.5) * 20,
+      y: y + (Math.random() - 0.5) * 20,
+    };
+
+    setSparkles((prev) => [...prev, newSparkle]);
+
+    setTimeout(() => {
+      setSparkles((prev) => prev.filter((s) => s.id !== newSparkle.id));
+    }, 600);
+  };
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -58,12 +165,14 @@ export function Dashboard() {
       animate="show"
       className="space-y-8"
     >
-      {/* 3D Text Background Section */}
+      {/* 3D Text Background Section with Sparkles */}
       <motion.div
+        ref={containerRef}
+        onMouseMove={handleMouseMove}
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className="relative h-64 md:h-80 rounded-2xl overflow-hidden group"
+        className="relative h-64 md:h-80 rounded-2xl overflow-hidden group cursor-crosshair"
         style={{
           perspective: "1200px",
         }}
@@ -98,6 +207,22 @@ export function Dashboard() {
         {/* Gradient Overlay */}
         <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-black/70" />
 
+        {/* Sparkles */}
+        {sparkles.map((sparkle) => (
+          <motion.div
+            key={sparkle.id}
+            className="absolute w-2 h-2 bg-cyan-300 rounded-full pointer-events-none"
+            style={{
+              left: sparkle.x,
+              top: sparkle.y,
+              boxShadow: "0 0 10px rgba(34, 211, 238, 0.8)",
+            }}
+            initial={{ opacity: 1, scale: 1 }}
+            animate={{ opacity: 0, scale: 0 }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+          />
+        ))}
+
         {/* 3D Text Content */}
         <div className="absolute inset-0 flex flex-col items-center justify-center px-8">
           {/* Main Title - LUCKNOW */}
@@ -117,6 +242,10 @@ export function Dashboard() {
           >
             <motion.h1
               className="text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-500 uppercase tracking-tighter drop-shadow-2xl"
+              style={{
+                fontFamily: "'Playfair Display', 'Georgia', serif",
+                letterSpacing: "0.15em",
+              }}
               animate={{
                 textShadow: [
                   "0 0 20px rgba(34, 211, 238, 0.5), 0 0 40px rgba(59, 130, 246, 0.3)",
@@ -142,6 +271,10 @@ export function Dashboard() {
           >
             <motion.p
               className="text-lg md:text-2xl font-bold text-cyan-300 uppercase tracking-widest"
+              style={{
+                fontFamily: "'Playfair Display', 'Georgia', serif",
+                letterSpacing: "0.1em",
+              }}
               animate={{
                 opacity: [0.6, 1, 0.6],
               }}
@@ -315,53 +448,96 @@ export function Dashboard() {
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {signals.length > 0 ? (
-            signals.map((signal) => (
-              <Tooltip key={signal.id}>
-                <TooltipTrigger asChild>
-                  <div>
-                    <Link href={`/intersections/${signal.intersectionId}`}>
-                      <Card className="bg-card border-card-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-pointer h-full">
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="font-bold text-sm truncate flex-1">
-                              {signal.roadName}
+            signals.map((signal) => {
+              const currentState = signalStates[signal.id] || 'red';
+              const timerDuration = calculateTimerDuration(signal.carCount);
+              const countdown = countdowns[signal.id] || 0;
+
+              return (
+                <Tooltip key={signal.id}>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <Link href={`/intersections/${signal.intersectionId}`}>
+                        <Card className="bg-card border-card-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-pointer h-full">
+                          <CardContent className="p-4">
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="font-bold text-sm truncate flex-1">
+                                {signal.roadName}
+                              </div>
+                              <Badge variant="outline" className="font-mono bg-background ml-2 shrink-0">
+                                {signal.direction}
+                              </Badge>
                             </div>
-                            <Badge variant="outline" className="font-mono bg-background ml-2 shrink-0">
-                              {signal.direction}
-                            </Badge>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <div className="text-xs text-muted-foreground">
-                              <span className="font-mono text-foreground">{signal.carCount} cars</span>
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="text-xs text-muted-foreground">
+                                <span className="font-mono text-foreground">{signal.carCount} cars</span>
+                              </div>
+                              <div className="flex items-center gap-1 text-xs text-cyan-400 font-mono font-bold">
+                                <Clock className="h-3 w-3" />
+                                {countdown.toFixed(1)}s
+                              </div>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center justify-between">
                               <div className="flex flex-col items-center gap-1 bg-background p-1.5 rounded border border-border">
-                                <div className={`w-3 h-3 rounded-full ${signal.state === 'red' ? 'bg-destructive shadow-[0_0_8px_rgba(220,38,38,0.8)]' : 'bg-destructive/20'}`} />
-                                <div className={`w-3 h-3 rounded-full ${signal.state === 'yellow' ? 'bg-chart-3 shadow-[0_0_8px_rgba(234,179,8,0.8)]' : 'bg-chart-3/20'}`} />
-                                <div className={`w-3 h-3 rounded-full ${signal.state === 'green' ? 'bg-chart-1 shadow-[0_0_8px_rgba(34,197,94,0.8)]' : 'bg-chart-1/20'}`} />
+                                <motion.div
+                                  animate={{
+                                    boxShadow:
+                                      currentState === "red"
+                                        ? "0 0 12px rgba(220, 38, 38, 0.8)"
+                                        : "0 0 0px rgba(220, 38, 38, 0)",
+                                  }}
+                                  className={`w-3 h-3 rounded-full ${
+                                    currentState === "red" ? "bg-destructive" : "bg-destructive/20"
+                                  }`}
+                                />
+                                <motion.div
+                                  animate={{
+                                    boxShadow:
+                                      currentState === "yellow"
+                                        ? "0 0 12px rgba(234, 179, 8, 0.8)"
+                                        : "0 0 0px rgba(234, 179, 8, 0)",
+                                  }}
+                                  className={`w-3 h-3 rounded-full ${
+                                    currentState === "yellow" ? "bg-chart-3" : "bg-chart-3/20"
+                                  }`}
+                                />
+                                <motion.div
+                                  animate={{
+                                    boxShadow:
+                                      currentState === "green"
+                                        ? "0 0 12px rgba(34, 197, 94, 0.8)"
+                                        : "0 0 0px rgba(34, 197, 94, 0)",
+                                  }}
+                                  className={`w-3 h-3 rounded-full ${
+                                    currentState === "green" ? "bg-chart-1" : "bg-chart-1/20"
+                                  }`}
+                                />
                               </div>
                               <div className="font-mono text-xs flex flex-col gap-0.5 text-right">
                                 <span className="text-chart-1">G: {signal.greenDuration}s</span>
                                 <span className="text-destructive">R: {signal.redDuration}s</span>
                               </div>
                             </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </Link>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <div className="space-y-1">
-                    <p className="font-semibold">{signal.roadName}</p>
-                    <p>Direction: {signal.direction}</p>
-                    <p>Current State: {signal.state.toUpperCase()}</p>
-                    <p>Vehicles: {signal.carCount}</p>
-                    <p className="text-xs text-muted-foreground mt-2">Click to view details</p>
-                  </div>
-                </TooltipContent>
-              </Tooltip>
-            ))
+                          </CardContent>
+                        </Card>
+                      </Link>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <div className="space-y-1">
+                      <p className="font-semibold">{signal.roadName}</p>
+                      <p>Direction: {signal.direction}</p>
+                      <p>Current State: {currentState.toUpperCase()}</p>
+                      <p>Vehicles: {signal.carCount}</p>
+                      <p className="text-xs text-cyan-300 mt-2">
+                        Timer: {(timerDuration / 1000).toFixed(1)}s (1s + {signal.carCount > 1 ? (signal.carCount - 1) * 0.5 : 0}s)
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-2">Click to view details</p>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              );
+            })
           ) : (
             <div className="col-span-full p-8 text-center text-muted-foreground border border-dashed border-border rounded-lg bg-card/50">
               No active signals detected. Add intersections and roads to begin.
