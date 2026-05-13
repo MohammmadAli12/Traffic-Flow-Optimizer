@@ -30,13 +30,11 @@ export function Dashboard() {
     console.log('Dashboard - stats:', stats);
   }, [signalsData, signals, stats]);
 
-  // Calculate timer duration based on car count
   const calculateTimerDuration = (carCount: number) => {
-    if (carCount === 0) return 2000; // 2 seconds if no cars
-    return 1000 + (carCount - 1) * 500; // 1 sec for first car + 0.5 sec per additional car
+    if (carCount === 0) return 2000;
+    return 1000 + (carCount - 1) * 500;
   };
 
-  // Initialize signal states
   useEffect(() => {
     const newStates: { [key: number]: string } = {};
     const newCountdowns: { [key: number]: number } = {};
@@ -46,16 +44,14 @@ export function Dashboard() {
         newStates[signal.id] = 'red';
       }
       const duration = calculateTimerDuration(signal.carCount);
-      newCountdowns[signal.id] = duration / 1000; // Convert to seconds for display
+      newCountdowns[signal.id] = duration / 1000;
     });
 
     setSignalStates((prev) => ({ ...prev, ...newStates }));
     setCountdowns((prev) => ({ ...prev, ...newCountdowns }));
   }, [signals]);
 
-  // Timer effect for signal changes
   useEffect(() => {
-    // Clear existing intervals
     Object.values(intervalsRef.current).forEach((interval) => clearInterval(interval));
     Object.values(countdownIntervalsRef.current).forEach((interval) => clearInterval(interval));
     intervalsRef.current = {};
@@ -64,7 +60,6 @@ export function Dashboard() {
     signals.forEach((signal) => {
       const duration = calculateTimerDuration(signal.carCount);
 
-      // Countdown timer
       let timeLeft = duration / 1000;
       setCountdowns((prev) => ({ ...prev, [signal.id]: timeLeft }));
 
@@ -75,7 +70,6 @@ export function Dashboard() {
         });
       }, 100);
 
-      // Signal change timer
       intervalsRef.current[signal.id] = setInterval(() => {
         setSignalStates((prev) => {
           const currentState = prev[signal.id] || 'red';
@@ -92,7 +86,6 @@ export function Dashboard() {
           return { ...prev, [signal.id]: nextState };
         });
 
-        // Reset countdown
         const newDuration = calculateTimerDuration(signal.carCount);
         setCountdowns((prev) => ({
           ...prev,
@@ -453,73 +446,100 @@ export function Dashboard() {
               const timerDuration = calculateTimerDuration(signal.carCount);
               const countdown = countdowns[signal.id] || 0;
 
+              const getBorderColor = () => {
+                if (currentState === 'red') return 'rgba(220, 38, 38, 1)';
+                if (currentState === 'yellow') return 'rgba(234, 179, 8, 1)';
+                return 'rgba(34, 197, 94, 1)';
+              };
+
+              const getGlowColor = () => {
+                if (currentState === 'red') return '0 0 25px rgba(220, 38, 38, 0.8), inset 0 0 15px rgba(220, 38, 38, 0.1)';
+                if (currentState === 'yellow') return '0 0 25px rgba(234, 179, 8, 0.8), inset 0 0 15px rgba(234, 179, 8, 0.1)';
+                return '0 0 25px rgba(34, 197, 94, 0.8), inset 0 0 15px rgba(34, 197, 94, 0.1)';
+              };
+
+              const getTimerColor = () => {
+                if (currentState === 'red') return 'rgb(220, 38, 38)';
+                if (currentState === 'yellow') return 'rgb(234, 179, 8)';
+                return 'rgb(34, 197, 94)';
+              };
+
               return (
                 <Tooltip key={signal.id}>
                   <TooltipTrigger asChild>
                     <div>
                       <Link href={`/intersections/${signal.intersectionId}`}>
-                        <Card className="bg-card border-card-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-pointer h-full">
-                          <CardContent className="p-4">
-                            <div className="flex items-center justify-between mb-3">
-                              <div className="font-bold text-sm truncate flex-1">
-                                {signal.roadName}
+                        <motion.div
+                          animate={{
+                            borderColor: getBorderColor(),
+                            boxShadow: getGlowColor(),
+                          }}
+                          transition={{ duration: 0.5 }}
+                          className="rounded-lg border-2 overflow-hidden hover:scale-105 transition-all duration-300 cursor-pointer h-full"
+                        >
+                          <Card className="bg-card border-0 shadow-none">
+                            <CardContent className="p-4">
+                              <div className="flex items-center justify-between mb-3">
+                                <div className="font-bold text-sm truncate flex-1">
+                                  {signal.roadName}
+                                </div>
+                                <Badge variant="outline" className="font-mono bg-background ml-2 shrink-0">
+                                  {signal.direction}
+                                </Badge>
                               </div>
-                              <Badge variant="outline" className="font-mono bg-background ml-2 shrink-0">
-                                {signal.direction}
-                              </Badge>
-                            </div>
-                            <div className="flex items-center justify-between mb-3">
-                              <div className="text-xs text-muted-foreground">
-                                <span className="font-mono text-foreground">{signal.carCount} cars</span>
+                              <div className="flex items-center justify-between mb-3">
+                                <div className="text-xs text-muted-foreground">
+                                  <span className="font-mono text-foreground">{signal.carCount} cars</span>
+                                </div>
+                                <div className="flex items-center gap-1 text-xs font-mono font-bold" style={{ color: getTimerColor() }}>
+                                  <Clock className="h-3 w-3" />
+                                  {countdown.toFixed(1)}s
+                                </div>
                               </div>
-                              <div className="flex items-center gap-1 text-xs text-cyan-400 font-mono font-bold">
-                                <Clock className="h-3 w-3" />
-                                {countdown.toFixed(1)}s
+                              <div className="flex items-center justify-between">
+                                <div className="flex flex-col items-center gap-1 bg-background p-1.5 rounded border border-border">
+                                  <motion.div
+                                    animate={{
+                                      boxShadow:
+                                        currentState === "red"
+                                          ? "0 0 12px rgba(220, 38, 38, 0.8)"
+                                          : "0 0 0px rgba(220, 38, 38, 0)",
+                                    }}
+                                    className={`w-3 h-3 rounded-full ${
+                                      currentState === "red" ? "bg-destructive" : "bg-destructive/20"
+                                    }`}
+                                  />
+                                  <motion.div
+                                    animate={{
+                                      boxShadow:
+                                        currentState === "yellow"
+                                          ? "0 0 12px rgba(234, 179, 8, 0.8)"
+                                          : "0 0 0px rgba(234, 179, 8, 0)",
+                                    }}
+                                    className={`w-3 h-3 rounded-full ${
+                                      currentState === "yellow" ? "bg-chart-3" : "bg-chart-3/20"
+                                    }`}
+                                  />
+                                  <motion.div
+                                    animate={{
+                                      boxShadow:
+                                        currentState === "green"
+                                          ? "0 0 12px rgba(34, 197, 94, 0.8)"
+                                          : "0 0 0px rgba(34, 197, 94, 0)",
+                                    }}
+                                    className={`w-3 h-3 rounded-full ${
+                                      currentState === "green" ? "bg-chart-1" : "bg-chart-1/20"
+                                    }`}
+                                  />
+                                </div>
+                                <div className="font-mono text-xs flex flex-col gap-0.5 text-right">
+                                  <span className="text-chart-1">G: {signal.greenDuration}s</span>
+                                  <span className="text-destructive">R: {signal.redDuration}s</span>
+                                </div>
                               </div>
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <div className="flex flex-col items-center gap-1 bg-background p-1.5 rounded border border-border">
-                                <motion.div
-                                  animate={{
-                                    boxShadow:
-                                      currentState === "red"
-                                        ? "0 0 12px rgba(220, 38, 38, 0.8)"
-                                        : "0 0 0px rgba(220, 38, 38, 0)",
-                                  }}
-                                  className={`w-3 h-3 rounded-full ${
-                                    currentState === "red" ? "bg-destructive" : "bg-destructive/20"
-                                  }`}
-                                />
-                                <motion.div
-                                  animate={{
-                                    boxShadow:
-                                      currentState === "yellow"
-                                        ? "0 0 12px rgba(234, 179, 8, 0.8)"
-                                        : "0 0 0px rgba(234, 179, 8, 0)",
-                                  }}
-                                  className={`w-3 h-3 rounded-full ${
-                                    currentState === "yellow" ? "bg-chart-3" : "bg-chart-3/20"
-                                  }`}
-                                />
-                                <motion.div
-                                  animate={{
-                                    boxShadow:
-                                      currentState === "green"
-                                        ? "0 0 12px rgba(34, 197, 94, 0.8)"
-                                        : "0 0 0px rgba(34, 197, 94, 0)",
-                                  }}
-                                  className={`w-3 h-3 rounded-full ${
-                                    currentState === "green" ? "bg-chart-1" : "bg-chart-1/20"
-                                  }`}
-                                />
-                              </div>
-                              <div className="font-mono text-xs flex flex-col gap-0.5 text-right">
-                                <span className="text-chart-1">G: {signal.greenDuration}s</span>
-                                <span className="text-destructive">R: {signal.redDuration}s</span>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
+                            </CardContent>
+                          </Card>
+                        </motion.div>
                       </Link>
                     </div>
                   </TooltipTrigger>
@@ -529,7 +549,7 @@ export function Dashboard() {
                       <p>Direction: {signal.direction}</p>
                       <p>Current State: {currentState.toUpperCase()}</p>
                       <p>Vehicles: {signal.carCount}</p>
-                      <p className="text-xs text-cyan-300 mt-2">
+                      <p className="text-xs mt-2" style={{ color: getTimerColor() }}>
                         Timer: {(timerDuration / 1000).toFixed(1)}s (1s + {signal.carCount > 1 ? (signal.carCount - 1) * 0.5 : 0}s)
                       </p>
                       <p className="text-xs text-muted-foreground mt-2">Click to view details</p>
