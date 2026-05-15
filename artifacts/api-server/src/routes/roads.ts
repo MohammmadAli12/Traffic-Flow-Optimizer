@@ -67,6 +67,34 @@ router.get("/roads/:id", async (req, res) => {
   }
 });
 
+router.patch("/roads/:id", async (req, res) => {
+  try {
+    const { id } = GetRoadParams.parse({ id: Number(req.params.id) });
+    const { coordinates } = req.body;
+
+    if (!Array.isArray(coordinates)) {
+      res.status(400).json({ error: "Coordinates must be an array of [lat, lng] pairs" });
+      return;
+    }
+
+    const [road] = await db
+      .update(roadsTable)
+      .set({ coordinates })
+      .where(eq(roadsTable.id, id))
+      .returning();
+
+    if (!road) {
+      res.status(404).json({ error: "Road not found" });
+      return;
+    }
+
+    res.json(road);
+  } catch (err) {
+    req.log.error({ err }, "Failed to update road coordinates");
+    res.status(400).json({ error: "Invalid request" });
+  }
+});
+
 router.delete("/roads/:id", async (req, res) => {
   try {
     const { id } = DeleteRoadParams.parse({ id: Number(req.params.id) });

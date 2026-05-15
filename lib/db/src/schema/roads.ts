@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp, json } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { intersectionsTable } from "./intersections";
@@ -9,6 +9,8 @@ export const roadsTable = pgTable("roads", {
   name: text("name").notNull(),
   direction: text("direction").notNull().$type<"North" | "South" | "East" | "West">(),
   carCount: integer("car_count").notNull().default(0),
+  // Polyline coordinates: array of [lat, lng] points representing the road path
+  coordinates: json("coordinates").$type<[number, number][]>().default([]),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

@@ -7,6 +7,7 @@ interface RouteSegment {
   direction: string;
   carCount: number;
   intersectionName: string;
+  isAmbulanceRoute?: boolean;
 }
 
 interface Hospital {
@@ -41,12 +42,15 @@ function trafficLabel(carCount: number): string {
 export function RouteMap({ route, totalCars, nearestHospital, sourceRoadName }: RouteMapProps) {
   const [animStep, setAnimStep] = useState(0);
 
+  // Mark all route segments as ambulance route
+  const markedRoute = route.map((seg) => ({ ...seg, isAmbulanceRoute: true }));
+
   // Animate the ambulance along route steps
   useEffect(() => {
     setAnimStep(0);
     const interval = setInterval(() => {
       setAnimStep((prev) => {
-        if (prev >= route.length) {
+        if (prev >= markedRoute.length) {
           clearInterval(interval);
           return prev;
         }
@@ -54,9 +58,9 @@ export function RouteMap({ route, totalCars, nearestHospital, sourceRoadName }: 
       });
     }, 700);
     return () => clearInterval(interval);
-  }, [route]);
+  }, [markedRoute.length]);
 
-  if (!route || route.length === 0) {
+  if (!markedRoute || markedRoute.length === 0) {
     return (
       <div className="p-6 text-center text-muted-foreground text-sm border border-dashed border-border rounded-lg">
         No route data available.
@@ -65,10 +69,9 @@ export function RouteMap({ route, totalCars, nearestHospital, sourceRoadName }: 
   }
 
   // Build nodes: origin + each unique intersection on route + hospital
-  // We'll render as a horizontal flow diagram
   const nodes = [
     { label: sourceRoadName, sublabel: "ORIGIN", type: "origin" as const },
-    ...route.slice(1).map((seg, i) => ({
+    ...markedRoute.slice(1).map((seg, i) => ({
       label: seg.intersectionName,
       sublabel: `via ${seg.direction}`,
       type: "intersection" as const,
@@ -77,7 +80,7 @@ export function RouteMap({ route, totalCars, nearestHospital, sourceRoadName }: 
     { label: nearestHospital.name, sublabel: nearestHospital.location, type: "hospital" as const },
   ];
 
-  const edges = route.map((seg, i) => ({
+  const edges = markedRoute.map((seg, i) => ({
     segment: seg,
     fromIdx: i,
     toIdx: i + 1,
@@ -122,7 +125,7 @@ export function RouteMap({ route, totalCars, nearestHospital, sourceRoadName }: 
                     {node.type === "hospital" ? "H" : node.type === "origin" ? "A" : i}
                   </div>
                   {/* Pulse on origin when animating */}
-                  {i === 0 && animStep <= route.length && (
+                  {i === 0 && animStep <= markedRoute.length && (
                     <span className="absolute inset-0 rounded-full border-2 border-red-500 animate-ping opacity-40" />
                   )}
                 </motion.div>
@@ -158,6 +161,13 @@ export function RouteMap({ route, totalCars, nearestHospital, sourceRoadName }: 
                   <div className="relative w-full h-3 flex items-center">
                     {/* Background track */}
                     <div className="w-full h-0.5 bg-zinc-800 rounded" />
+                    {/* Ambulance route highlight */}
+                    <motion.div
+                      className="absolute left-0 top-1/2 -translate-y-1/2 h-1 rounded origin-left bg-gradient-to-r from-red-500 via-red-400 to-red-500 shadow-[0_0_12px_rgba(239,68,68,0.8)]"
+                      initial={{ scaleX: 0 }}
+                      animate={active ? { scaleX: 1 } : { scaleX: 0 }}
+                      transition={{ duration: 0.5, ease: "easeOut" }}
+                    />
                     {/* Animated fill */}
                     <motion.div
                       className="absolute left-0 top-1/2 -translate-y-1/2 h-0.5 rounded origin-left"
@@ -213,7 +223,7 @@ export function RouteMap({ route, totalCars, nearestHospital, sourceRoadName }: 
       {/* Segment table */}
       <div className="space-y-1">
         <div className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground mb-2">Segment Details</div>
-        {route.map((seg, i) => (
+        {markedRoute.map((seg, i) => (
           <motion.div
             key={seg.roadId}
             initial={{ opacity: 0, x: -10 }}
@@ -226,6 +236,11 @@ export function RouteMap({ route, totalCars, nearestHospital, sourceRoadName }: 
               <span className="text-zinc-300 font-bold">{seg.roadName}</span>
               <span className="text-zinc-500">{seg.direction}</span>
               <span className="text-zinc-600">{seg.intersectionName}</span>
+              {seg.isAmbulanceRoute && (
+                <span className="ml-2 px-2 py-0.5 bg-red-950 border border-red-500 rounded text-[9px] font-bold text-red-400 uppercase tracking-wider">
+                  🚑 Route
+                </span>
+              )}
             </div>
             <span style={{ color: trafficColor(seg.carCount) }} className="font-bold">
               {seg.carCount} cars

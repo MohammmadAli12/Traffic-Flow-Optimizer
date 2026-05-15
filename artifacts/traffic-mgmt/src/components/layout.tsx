@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, MapPin, Activity, Hospital, Map } from "lucide-react";
+import { LayoutDashboard, MapPin, Activity, Hospital, Map, Pencil } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -18,6 +18,7 @@ import { ReactNode } from "react";
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Lucknow Map", href: "/map", icon: Map },
+  { name: "Road Editor", href: "/road-editor", icon: Pencil },
   { name: "Intersections", href: "/intersections", icon: MapPin },
   { name: "Dispatch", href: "/ambulances", icon: Activity },
   { name: "Hospitals", href: "/hospitals", icon: Hospital },

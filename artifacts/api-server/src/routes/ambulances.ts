@@ -38,6 +38,7 @@ async function findNearestHospitalWithRoute(sourceRoadId: number) {
     direction: string;
     carCount: number;
     intersectionName: string;
+    coordinates: [number, number][];
   }[] = [];
   let bestTotalCars = Infinity;
 
@@ -58,15 +59,8 @@ async function findNearestHospitalWithRoute(sourceRoadId: number) {
       bestTotalCars = totalCars;
       bestHospital = hospital;
 
-      // Build route segments: source road → roads at hospital intersection (lowest traffic first)
-      const hospitalRoads = roadsAtHospital.slice(0, 3); // show up to 3 roads on path
-
-      const hospitalIntersectionRows = await db
-        .select()
-        .from(roadsTable)
-        .where(eq(roadsTable.intersectionId, hospital.nearestIntersectionId));
-
-      const intersectionName = hospital.location;
+      // Build route segments: source road → all roads at hospital intersection (lowest traffic first)
+      const hospitalRoads = roadsAtHospital; // include all roads for signal priority
 
       bestRoute = [
         {
@@ -75,6 +69,7 @@ async function findNearestHospitalWithRoute(sourceRoadId: number) {
           direction: sourceRoad.direction,
           carCount: sourceRoad.carCount,
           intersectionName: `Origin`,
+          coordinates: (sourceRoad.coordinates as [number, number][]) || [],
         },
         ...hospitalRoads.map((r) => ({
           roadId: r.id,
@@ -82,6 +77,7 @@ async function findNearestHospitalWithRoute(sourceRoadId: number) {
           direction: r.direction,
           carCount: r.carCount,
           intersectionName: hospital.name,
+          coordinates: (r.coordinates as [number, number][]) || [],
         })),
       ];
     }

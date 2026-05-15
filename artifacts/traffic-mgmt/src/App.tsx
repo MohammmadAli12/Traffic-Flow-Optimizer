@@ -11,6 +11,7 @@ import { IntersectionDetail } from "./pages/intersection-detail";
 import { Ambulances } from "./pages/ambulances";
 import { Hospitals } from "./pages/hospitals";
 import { LucknowMap } from "./pages/map";
+import { RoadEditor } from "./pages/road-editor";
 
 // Set API base URL
 setBaseUrl("http://localhost:3000");
@@ -33,6 +34,7 @@ function Router() {
         <Route path="/ambulances" component={Ambulances} />
         <Route path="/hospitals" component={Hospitals} />
         <Route path="/map" component={LucknowMap} />
+        <Route path="/road-editor" component={RoadEditor} />
         <Route component={NotFound} />
       </Switch>
     </AppLayout>

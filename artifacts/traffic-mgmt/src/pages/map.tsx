@@ -180,19 +180,34 @@ export function LucknowMap() {
         qc.invalidateQueries({ queryKey: getListAmbulancesQueryKey() });
         compute.mutate({}, { onSuccess: () => qc.invalidateQueries({ queryKey: getListSignalsQueryKey() }) });
 
-        // Build coordinate path
+        // Build coordinate path using real road coordinates
         const coords: [number, number][] = [];
 
-        // Origin intersection
-        const srcPos = road?.intersectionId ? getPos(road.intersectionId) : null;
-        if (srcPos) coords.push(srcPos);
-
-        // Intermediate intersections from route segments
+        // Add all road coordinates from the route
         for (const seg of result.route) {
-          const segRoad = roads?.find(r => r.id === seg.roadId);
-          if (segRoad) {
-            const p = getPos(segRoad.intersectionId);
-            if (p && JSON.stringify(coords[coords.length - 1]) !== JSON.stringify(p)) coords.push(p);
+          const segCoords = (seg.coordinates as [number, number][]) || [];
+          if (segCoords.length > 0) {
+            // Add all points from this road segment
+            for (const coord of segCoords) {
+              // Avoid duplicate consecutive points
+              if (coords.length === 0 || JSON.stringify(coords[coords.length - 1]) !== JSON.stringify(coord)) {
+                coords.push(coord);
+              }
+            }
+          }
+        }
+
+        // If no coordinates from roads, fallback to intersection positions
+        if (coords.length < 2) {
+          const srcPos = road?.intersectionId ? getPos(road.intersectionId) : null;
+          if (srcPos) coords.push(srcPos);
+
+          for (const seg of result.route) {
+            const segRoad = roads?.find(r => r.id === seg.roadId);
+            if (segRoad) {
+              const p = getPos(segRoad.intersectionId);
+              if (p && JSON.stringify(coords[coords.length - 1]) !== JSON.stringify(p)) coords.push(p);
+            }
           }
         }
 
@@ -205,11 +220,14 @@ export function LucknowMap() {
         if (JSON.stringify(coords[coords.length - 1]) !== JSON.stringify(hPos)) coords.push(hPos);
 
         // Ensure at least 2 points
-        if (coords.length < 2 && srcPos) coords.push(hPos);
+        if (coords.length < 2) {
+          const srcPos = road?.intersectionId ? getPos(road.intersectionId) : [26.8467, 80.9462];
+          coords.push(srcPos ?? [26.8467, 80.9462], hPos);
+        }
 
         const sim: AmbSim = {
           id: result.ambulance.id,
-          route: coords.length >= 2 ? coords : [srcPos ?? [26.8467, 80.9462], hPos],
+          route: coords,
           progress: 0,
           sourceRoadName: result.ambulance.sourceRoadName,
           hospitalName: result.nearestHospital.name,
@@ -390,7 +408,7 @@ export function LucknowMap() {
                   : <><Siren className="h-3.5 w-3.5 mr-2" />Dispatch + Simulate</>}
               </Button>
               <p className="text-[10px] text-muted-foreground leading-relaxed">
-                Finds the nearest hospital by lowest traffic load and animates the route on the map.
+                Finds the nearest hospital by lowest traffic load and animates the route on the map using real roads.
               </p>
             </div>
           </div>

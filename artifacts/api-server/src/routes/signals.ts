@@ -1,18 +1,39 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { roadsTable, signalsTable, intersectionsTable } from "@workspace/db";
+import { roadsTable, signalsTable, intersectionsTable, ambulancesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { GetSignalsForIntersectionParams } from "@workspace/api-zod";
 
 const router: IRouter = Router();
 
 /**
- * Compute signal timings for all roads in an intersection.
- * Proportional green time: roads with more cars get longer green phases.
- * Minimum green = 10s, max green = 120s.
- * Red = total cycle - green for each road.
+ * Get all road IDs that are part of active ambulance routes.
  */
-function computeTimings(roads: { id: number; carCount: number }[]): {
+async function getAmbulanceRouteRoadIds(): Promise<Set<number>> {
+  const activeAmbulances = await db
+    .select()
+    .from(ambulancesTable)
+    .where(eq(ambulancesTable.status, "active"));
+
+  const routeRoadIds = new Set<number>();
+  for (const amb of activeAmbulances) {
+    const sourceRoad = await db.select().from(roadsTable).where(eq(roadsTable.id, amb.sourceRoadId));
+    if (sourceRoad.length > 0) {
+      routeRoadIds.add(sourceRoad[0].id);
+    }
+  }
+  return routeRoadIds;
+}
+
+/**
+ * Compute signal timings for all roads in an intersection.
+ * Ambulance route roads get GREEN priority.
+ * Other roads: proportional green time based on car count.
+ */
+function computeTimings(
+  roads: { id: number; carCount: number }[],
+  ambulanceRouteRoadIds: Set<number>
+): {
   roadId: number;
   greenDuration: number;
   redDuration: number;
@@ -23,10 +44,23 @@ function computeTimings(roads: { id: number; carCount: number }[]): {
   const MIN_GREEN = 10;
   const MAX_GREEN = 120;
   const BASE_GREEN = 30;
-  const totalCars = roads.reduce((sum, r) => sum + r.carCount, 0);
   const CYCLE = 120;
 
-  // Determine which road gets green (highest car count wins)
+  const hasAmbulanceRoute = roads.some((r) => ambulanceRouteRoadIds.has(r.id));
+
+  if (hasAmbulanceRoute) {
+    return roads.map((road) => {
+      const state: "green" | "red" | "yellow" = ambulanceRouteRoadIds.has(road.id) ? "green" : "red";
+      return {
+        roadId: road.id,
+        greenDuration: state === "green" ? 120 : 10,
+        redDuration: state === "green" ? 10 : 120,
+        state,
+      };
+    });
+  }
+
+  const totalCars = roads.reduce((sum, r) => sum + r.carCount, 0);
   const maxCars = Math.max(...roads.map((r) => r.carCount));
 
   return roads.map((road) => {
@@ -34,14 +68,12 @@ function computeTimings(roads: { id: number; carCount: number }[]): {
     if (totalCars === 0) {
       greenDuration = BASE_GREEN;
     } else {
-      // Proportional to car count, scaled to MIN_GREEN..MAX_GREEN
       const ratio = road.carCount / totalCars;
       greenDuration = Math.round(MIN_GREEN + ratio * (MAX_GREEN - MIN_GREEN));
       greenDuration = Math.max(MIN_GREEN, Math.min(MAX_GREEN, greenDuration));
     }
 
     const redDuration = Math.max(MIN_GREEN, CYCLE - greenDuration);
-    // Road with highest cars gets green state; others get red
     const state: "green" | "red" | "yellow" =
       road.carCount === maxCars && maxCars > 0 ? "green" : "red";
 
@@ -91,12 +123,13 @@ router.get("/signals", async (req, res) => {
 
 router.post("/signals/compute", async (req, res) => {
   try {
+    const ambulanceRouteRoadIds = await getAmbulanceRouteRoadIds();
     const intersections = await db.select().from(intersectionsTable);
     const updatedSignals: any[] = [];
 
     for (const intersection of intersections) {
       const roads = await db.select().from(roadsTable).where(eq(roadsTable.intersectionId, intersection.id));
-      const timings = computeTimings(roads);
+      const timings = computeTimings(roads, ambulanceRouteRoadIds);
 
       for (const timing of timings) {
         const updated = await db
