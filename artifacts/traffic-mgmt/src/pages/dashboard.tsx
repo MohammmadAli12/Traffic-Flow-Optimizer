@@ -36,6 +36,8 @@ export function Dashboard() {
   };
 
   useEffect(() => {
+    if (signals.length === 0) return;
+
     const newStates: { [key: number]: string } = {};
     const newCountdowns: { [key: number]: number } = {};
 
@@ -47,11 +49,17 @@ export function Dashboard() {
       newCountdowns[signal.id] = duration / 1000;
     });
 
-    setSignalStates((prev) => ({ ...prev, ...newStates }));
-    setCountdowns((prev) => ({ ...prev, ...newCountdowns }));
-  }, [signals]);
+    if (Object.keys(newStates).length > 0) {
+      setSignalStates((prev) => ({ ...prev, ...newStates }));
+    }
+    if (Object.keys(newCountdowns).length > 0) {
+      setCountdowns((prev) => ({ ...prev, ...newCountdowns }));
+    }
+  }, [signals.length]);
 
   useEffect(() => {
+    if (signals.length === 0) return;
+
     Object.values(intervalsRef.current).forEach((interval) => clearInterval(interval));
     Object.values(countdownIntervalsRef.current).forEach((interval) => clearInterval(interval));
     intervalsRef.current = {};
@@ -98,7 +106,7 @@ export function Dashboard() {
       Object.values(intervalsRef.current).forEach((interval) => clearInterval(interval));
       Object.values(countdownIntervalsRef.current).forEach((interval) => clearInterval(interval));
     };
-  }, [signals]);
+  }, [signals.length]);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!containerRef.current) return;

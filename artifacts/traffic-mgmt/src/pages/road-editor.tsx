@@ -102,42 +102,48 @@ export function RoadEditor() {
   };
 
   const handleSave = async () => {
+    console.log("=== SAVE CLICKED ===");
+    console.log("selectedRoad:", selectedRoad);
+    console.log("coordinates.length:", coordinates.length);
+    
     if (!selectedRoad || coordinates.length < 2) {
-      setMessage({ type: "error", text: "Need at least 2 points to save a road" });
+      const msg = "Need at least 2 points to save a road";
+      console.warn(msg, { selectedRoad, coordLength: coordinates.length });
+      setMessage({ type: "error", text: msg });
       return;
     }
 
     setSaving(true);
     try {
-      console.log("Saving road coordinates...", {
-        roadId: selectedRoad.id,
-        roadName: selectedRoad.name,
-        pointCount: coordinates.length,
-        coordinates: coordinates,
-      });
+      const url = `/api/roads/${selectedRoad.id}`;
+      const body = { coordinates };
+      
+      console.log("Sending PATCH request to:", url);
+      console.log("Request body:", body);
 
-      const response = await fetch(`/api/roads/${selectedRoad.id}`, {
+      const response = await fetch(url, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ coordinates }),
+        body: JSON.stringify(body),
       });
 
-      const responseText = await response.text();
       console.log("Response status:", response.status);
-      console.log("Response body:", responseText);
+      console.log("Response ok:", response.ok);
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Error response:", errorText);
         let errorMsg = "Failed to save road coordinates";
         try {
-          const errorData = JSON.parse(responseText);
+          const errorData = JSON.parse(errorText);
           errorMsg = errorData.error || errorMsg;
         } catch (e) {
-          errorMsg = responseText || errorMsg;
+          errorMsg = errorText || errorMsg;
         }
         throw new Error(errorMsg);
       }
 
-      const data = JSON.parse(responseText);
+      const data = await response.json();
       console.log("Save successful:", data);
 
       setMessage({ type: "success", text: `✓ Saved ${coordinates.length} points for ${selectedRoad.name}` });
@@ -148,6 +154,7 @@ export function RoadEditor() {
     } catch (err) {
       const errorMsg = (err as Error).message;
       console.error("Save error:", errorMsg);
+      console.error("Full error:", err);
       setMessage({ type: "error", text: `Error: ${errorMsg}` });
     } finally {
       setSaving(false);
@@ -155,13 +162,13 @@ export function RoadEditor() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 bg-white min-h-screen p-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold uppercase tracking-tight flex items-center gap-3">
+        <h1 className="text-2xl font-bold uppercase tracking-tight flex items-center gap-3 text-black">
           <MapPin className="h-6 w-6" /> Road Coordinate Editor
         </h1>
-        <p className="text-sm text-muted-foreground mt-1">
+        <p className="text-sm text-gray-600 mt-1">
           Draw road paths on the map to define ambulance routes
         </p>
       </div>
@@ -187,7 +194,7 @@ export function RoadEditor() {
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         {/* ── MAP ── */}
-        <div className="lg:col-span-3 rounded-xl overflow-hidden border border-border" style={{ height: 540 }}>
+        <div className="lg:col-span-3 rounded-xl overflow-hidden border-2 border-gray-300" style={{ height: 540 }}>
           <MapContainer center={[26.8467, 80.9462]} zoom={12} style={{ height: "100%", width: "100%" }}>
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -248,15 +255,15 @@ export function RoadEditor() {
         {/* ── RIGHT PANEL ── */}
         <div className="space-y-4">
           {/* Road selector */}
-          <Card className="bg-card border-border">
+          <Card className="bg-white border-2 border-gray-300">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm uppercase tracking-widest flex items-center gap-2">
+              <CardTitle className="text-sm uppercase tracking-widest flex items-center gap-2 text-black">
                 <Pencil className="h-4 w-4" /> Select Road
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <Select value={selectedRoadId} onValueChange={setSelectedRoadId}>
-                <SelectTrigger className="font-mono text-xs bg-background">
+                <SelectTrigger className="font-mono text-xs bg-white border-gray-300 text-black">
                   <SelectValue placeholder="Choose a road..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -269,10 +276,10 @@ export function RoadEditor() {
               </Select>
 
               {selectedRoad && (
-                <div className="text-xs space-y-1 p-2 bg-secondary/30 rounded border border-border">
-                  <div className="font-mono font-bold text-foreground">{selectedRoad.name}</div>
-                  <div className="text-muted-foreground">{selectedRoad.direction}</div>
-                  <div className="text-muted-foreground">
+                <div className="text-xs space-y-1 p-2 bg-blue-50 rounded border-2 border-blue-300">
+                  <div className="font-mono font-bold text-black">{selectedRoad.name}</div>
+                  <div className="text-gray-600">{selectedRoad.direction}</div>
+                  <div className="text-gray-600">
                     {coordinates.length} points
                   </div>
                 </div>
@@ -281,9 +288,9 @@ export function RoadEditor() {
           </Card>
 
           {/* Drawing controls */}
-          <Card className="bg-card border-border">
+          <Card className="bg-white border-2 border-gray-300">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm uppercase tracking-widest">Drawing</CardTitle>
+              <CardTitle className="text-sm uppercase tracking-widest text-black">Drawing</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               <Button
@@ -318,24 +325,24 @@ export function RoadEditor() {
           </Card>
 
           {/* Coordinates list */}
-          <Card className="bg-card border-border">
+          <Card className="bg-white border-2 border-gray-300">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm uppercase tracking-widest">
+              <CardTitle className="text-sm uppercase tracking-widest text-black">
                 Points ({coordinates.length})
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-1 max-h-40 overflow-y-auto text-[10px] font-mono">
                 {coordinates.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-4">No points yet</p>
+                  <p className="text-gray-500 text-center py-4">No points yet</p>
                 ) : (
                   coordinates.map((coord, i) => (
                     <div
                       key={i}
-                      className="flex items-center justify-between p-1.5 bg-secondary/30 rounded border border-border/50 hover:border-border transition-colors"
+                      className="flex items-center justify-between p-1.5 bg-gray-100 rounded border border-gray-300 hover:border-gray-400 transition-colors"
                     >
-                      <span className="text-muted-foreground">#{i + 1}</span>
-                      <span className="text-foreground">
+                      <span className="text-gray-600">#{i + 1}</span>
+                      <span className="text-black">
                         {coord[0].toFixed(4)}, {coord[1].toFixed(4)}
                       </span>
                     </div>
@@ -363,9 +370,9 @@ export function RoadEditor() {
           </Button>
 
           {/* Instructions */}
-          <Card className="bg-secondary/20 border-border">
-            <CardContent className="pt-4 text-[10px] text-muted-foreground space-y-2 leading-relaxed">
-              <div className="font-bold text-foreground mb-2">How to use:</div>
+          <Card className="bg-gray-50 border-2 border-gray-300">
+            <CardContent className="pt-4 text-[10px] text-gray-600 space-y-2 leading-relaxed">
+              <div className="font-bold text-black mb-2">How to use:</div>
               <ol className="space-y-1 list-decimal list-inside">
                 <li>Select a road from the dropdown</li>
                 <li>Click "Start Drawing"</li>
@@ -373,8 +380,8 @@ export function RoadEditor() {
                 <li>Use "Undo" to remove last point</li>
                 <li>Click "Save Coordinates" when done</li>
               </ol>
-              <div className="pt-2 border-t border-border/50 mt-2">
-                <div className="font-bold text-foreground mb-1">Troubleshooting:</div>
+              <div className="pt-2 border-t border-gray-300 mt-2">
+                <div className="font-bold text-black mb-1">Troubleshooting:</div>
                 <ul className="space-y-1 list-disc list-inside">
                   <li>Check browser console (F12) for errors</li>
                   <li>Ensure at least 2 points before saving</li>
